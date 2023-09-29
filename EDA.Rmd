@@ -1,0 +1,87 @@
+---
+title: "Facebook_EDA"
+output: pdf_document
+date: "2023-09-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(GGally)
+```
+
+### Set Working Directory
+
+First, set the working directory to the location where your data is stored on your computer. Uncomment and modify the `setwd` line as needed.
+
+```{r}
+setwd("~/Desktop/MA575/GroupProject/facebook-metrics")
+```
+
+## Data Import and Exploration
+
+### Read Data
+
+Let's start by reading the data from a CSV file using a semicolon as the delimiter.
+
+```{r}
+# Read data from a CSV file using semicolon as delimiter
+fc_data <- read.csv("./data/dataset_Facebook.csv", header=TRUE, as.is=TRUE, sep=';')
+```
+
+### Check Missing Values
+
+```{r}
+# Summary of each column
+summary(fc_data)
+```
+
+-   NA values in variable "Paid","Like","share".
+-   In total 500 observations and 19 variables including categorical variables.
+-   Original dataset is clean enought for later analysis.
+
+## Data Visualization
+
+### Scatterplot Matrix using ggplot2
+
+```{r }
+temp_data<-fc_data %>% select(starts_with("Lifetime"))
+
+ggpairs(temp_data,
+        lower=list(continuous=wrap("density", alpha=0.5), combo="box"),
+        upper=list(continuous=wrap("points", alpha=0.3, size=0.1)))
+
+ggpairs(temp_data,
+        lower=list(continuous=wrap("points", alpha=0.3, size=0.1)),
+        upper=list(continuous=wrap("cor", size=4)))
+```
+
+-   High correlation between Lifetime.Post.Consumptions and Lifetime.Engaged.Users
+-   Lifetime.Post.Consumptions: The number of clicks anywhere in a post.
+-   Lifetime.Engaged.Users: The number of people who clicked anywhere in a post (unique users).
+
+### Find Outliers
+
+```{r outliers}
+
+Q1_consumption<-509.2
+Q3_consumption<-1463.0
+
+Q1_Engaged<-393.8
+Q3_Engaged<-1062.0
+
+data_2col <- temp_data %>% 
+  filter(Lifetime.Post.Consumptions>= Q1_consumption & Lifetime.Post.Consumptions <= Q3_consumption,
+         Lifetime.Engaged.Users>=Q1_Engaged &Lifetime.Engaged.Users<=Q3_Engaged ) %>%
+  select(Lifetime.Engaged.Users,Lifetime.Post.Consumptions)
+
+```
+
+### Scatterplot
+
+```{r scatterplot}
+plot(data_2col$Lifetime.Post.Consumptions,data_2col$Lifetime.Engaged.Users,
+     pch=19, cex=0.2)
+abline(lsfit(x=data_2col$Lifetime.Post.Consumptions,y=data_2col$Lifetime.Engaged.Users), col="blue")
+```
