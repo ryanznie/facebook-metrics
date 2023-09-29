@@ -1,0 +1,52 @@
+---
+title: "Facebook_EDA"
+author:"Yuqing Yang|Zitong Feng"
+output: pdf_document
+date: "2023-09-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+library(tidyverse)
+```
+
+### Set Working Directory
+
+First, set the working directory to the location where your data is stored on your computer. Uncomment and modify the `setwd` line as needed.
+
+```{r}
+setwd("~/Desktop/MA575/GroupProject")
+```
+
+## Data Import and Exploration
+
+### Read Data
+
+Let's start by reading the data from a CSV file using a semicolon as the delimiter.
+
+```{r}
+# Read data from a CSV file using semicolon as delimiter
+data <- read.csv("./data/dataset_Facebook.csv", header=TRUE, as.is=TRUE, sep=';')
+```
+
+### Check Missing Values
+
+```{r}
+# Summary of each column
+summary(data)
+
+```
+summary:
+- NA values in variable "Paid","Like","share"
+- In total 500 observations and 19 variables including categorical variables
+
+## Data Visualization
+
+### Scatterplot
+
+Let's create a scatterplot of Ground CO.
+
+```{r}
+# Scatterplot of Ground CO
+plot(GroundCO)
+```
