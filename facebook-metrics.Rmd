@@ -1,19 +1,20 @@
 ---
-title: "facebook-analytics"
+title: "facebook-metrics"
 author: "Ryan Nie"
-date: "9/15/2023"
+date: "9/29/2023"
 output: html_document
 ---
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
 ```{r data}
 library(tidyverse)
-FBdata <- read.csv("data/dataset_Facebook.csv",header=T,sep=";")
-FBdata
+df <- read.csv("data/dataset_Facebook.csv",header=T,sep=";")
+df
+```
+
+
+```{r lm}
+LM <- lm(df$Lifetime.Engaged.Users ~ df$Lifetime.Post.Consumptions)
+df %>% ggplot(aes(x = Lifetime.Post.Consumptions, y = Lifetime.Engaged.Users)) + geom_point() + xlab("Lifetime Post Consumptions") + ylab("Lifetime Engaged Users") + ggtitle("Lifetime Engaged Users vs Lifetime Post Consumptions") + geom_smooth(method='lm', formula= y~x)
+
 ```
 
