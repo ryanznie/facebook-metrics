@@ -2,10 +2,12 @@
 title: "facebook-metrics"
 author: "Ryan Nie"
 date: "9/29/2023"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
-```{r data}
+```{r data, include=FALSE}
 library(tidyverse)
 df <- read.csv("data/dataset_Facebook.csv",header=T,sep=";")
 df
