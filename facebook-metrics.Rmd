@@ -16,7 +16,13 @@ df
 
 ```{r lm}
 LM <- lm(df$Lifetime.Engaged.Users ~ df$Lifetime.Post.Consumptions)
-df %>% ggplot(aes(x = Lifetime.Post.Consumptions, y = Lifetime.Engaged.Users)) + geom_point() + xlab("Lifetime Post Consumptions") + ylab("Lifetime Engaged Users") + ggtitle("Lifetime Engaged Users vs Lifetime Post Consumptions") + geom_smooth(method='lm', formula= y~x)
+df %>% 
+  ggplot(aes(x = Lifetime.Post.Consumptions, y = Lifetime.Engaged.Users)) + 
+  geom_point() + 
+  xlab("Lifetime Post Consumptions") + 
+  ylab("Lifetime Engaged Users") + 
+  ggtitle("Lifetime Engaged Users vs Lifetime Post Consumptions") + 
+  geom_smooth(method='lm', formula= y~x)
 
 ```
 
