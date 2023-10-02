@@ -9,14 +9,26 @@ output:
 
 ```{r data, include=FALSE}
 library(tidyverse)
-df <- read.csv("data/dataset_Facebook.csv",header=T,sep=";")
+df <- read.csv("C:/Users/wdy24/Dropbox (Personal)/BU_PHD/Coursework/BU MA series/MA575/Lab/Project/Code_dataset/dataset_Facebook(3).csv",header=T,sep=";")
 df
+attach(df)
 ```
 
 ```{r lm1}
+summary(Lifetime.Post.Consumptions)
+summary(Lifetime.Engaged.Users)
+cor(Lifetime.Engaged.Users,Lifetime.Post.Consumptions)
+df %>% 
+  ggplot(aes(x = Lifetime.Post.Consumptions, y = Lifetime.Engaged.Users)) + 
+  geom_point() + 
+  xlab("Lifetime Post Consumptions") + 
+  ylab("Lifetime Engaged Users") 
+
+
+
 LM_1 <- lm(df$Lifetime.Engaged.Users ~ df$Lifetime.Post.Consumptions)
-summary(lm)
-plot(lm)
+summary(LM_1)
+plot(LM_1)
 ```
 
 ```{r lm fit}
@@ -26,7 +38,6 @@ df %>%
   geom_point() + 
   xlab("Lifetime Post Consumptions") + 
   ylab("Lifetime Engaged Users") + 
-  ggtitle("Lifetime Engaged Users vs Lifetime Post Consumptions") + 
   geom_smooth(method='lm', formula= y~x)
 
 ```
