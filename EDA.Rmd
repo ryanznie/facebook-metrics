@@ -61,7 +61,7 @@ pair2<- ggpairs(temp_data,
         lower=list(continuous=wrap("points", alpha=0.3, size=0.1)),
         upper=list(continuous=wrap("cor", size=4)))
 pair2 + theme(axis.text.x = element_text(angle = 40, hjust = 1, size = 7), axis.text.y = element_text(vjust = 1, size = 7))
-
+pair2
 ```
 
 -   High correlation between Lifetime.Post.Consumptions and Lifetime.Engaged.Users
