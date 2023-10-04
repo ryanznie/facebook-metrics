@@ -29,6 +29,7 @@ df %>%
 LM_1 <- lm(df$Lifetime.Engaged.Users ~ df$Lifetime.Post.Consumptions)
 summary(LM_1)
 plot(LM_1)
+confint(LM_1)
 ```
 
 ```{r lm fit}
