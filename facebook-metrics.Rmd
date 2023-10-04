@@ -9,6 +9,7 @@ output:
 
 ```{r data, include=FALSE}
 library(tidyverse)
+library(dplyr)
 df <- read.csv("C:/Users/wdy24/Dropbox (Personal)/BU_PHD/Coursework/BU MA series/MA575/Lab/Project/Code_dataset/dataset_Facebook(3).csv",header=T,sep=";")
 df
 attach(df)
