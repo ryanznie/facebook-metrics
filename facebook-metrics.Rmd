@@ -64,7 +64,7 @@ ggplot(data = melted_corr, aes(x = Var1, y = Var2, fill = value)) +
 
 ```{r pairCor}
 library(GGally)
-num_df <- numerical_df %>% select(!c('Post.Month', 'Post.Weekday', 'Post.Hour', 'Paid', 'Category'))
+num_df <- numerical_df #%>% select(!c('Post.Month', 'Post.Weekday', 'Post.Hour', 'Paid', 'Category'))
 ggpairs(num_df)
 ```
 
