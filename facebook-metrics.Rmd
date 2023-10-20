@@ -7,22 +7,64 @@ output:
   html_document: default
 ---
 
-```{r data, include=FALSE}
+```{r data, echo=FALSE, include=FALSE}
 library(tidyverse)
 df <- read.csv("data/dataset_Facebook.csv",header=T,sep=";")
 df
 ```
 
+```{r descriptive}
+sapply(df, function(x) sum(is.na(x)))
 
-```{r lm}
-LM <- lm(df$Lifetime.Engaged.Users ~ df$Lifetime.Post.Consumptions)
-df %>% 
-  ggplot(aes(x = Lifetime.Post.Consumptions, y = Lifetime.Engaged.Users)) + 
-  geom_point() + 
-  xlab("Lifetime Post Consumptions") + 
-  ylab("Lifetime Engaged Users") + 
-  ggtitle("Lifetime Engaged Users vs Lifetime Post Consumptions") + 
-  geom_smooth(method='lm', formula= y~x)
+data.frame(do.call(cbind, lapply(na.omit(df), summary)))
+```
 
+```{r}
+colnames(df) <- sub("Lifetime", "LT", colnames(df))
+colnames(df) <- sub("Post", "P", colnames(df))
+colnames(df) <- sub("post", "P", colnames(df))
+colnames(df) <- sub("Total", "Tot", colnames(df))
+colnames(df) <- sub("total", "tot", colnames(df))
+colnames(df) <- sub("Page", "Pg", colnames(df))
+colnames(df) <- sub("people", "ppl", colnames(df))
+colnames(df) <- sub("People", "ppl", colnames(df))
+colnames(df) <- sub("engaged", "eng", colnames(df))
+colnames(df) <- sub("Consumptions", "Consump", colnames(df))
+colnames(df) <- sub("have.", "", colnames(df))
+colnames(df) <- sub("Impressions", "Imp", colnames(df))
+colnames(df) <- sub("your.", "", colnames(df))
+
+# can prob map this
+```
+
+```{r cor}
+library(reshape2)
+numerical_df <- df[sapply(df, is.numeric)]
+corr_mat <- cor(numerical_df, use = "complete.obs")
+
+melted_corr <- melt(corr_mat)
+ggplot(data = melted_corr, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "blue",
+    high = "red",
+    mid = "white",
+    midpoint = 0,
+    limit = c(-1, 1),
+    space = "Lab",
+    name = "Pearson\nCorrelation"
+  ) +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45))
+
+# ggsave(file="cor.png", width=20, height=25, dpi=300)
+```
+
+```{r pairCor}
+library(GGally)
+num_df <- numerical_df %>% select(!c('Post.Month', 'Post.Weekday', 'Post.Hour', 'Paid', 'Category'))
+ggpairs(num_df)
 ```
 
