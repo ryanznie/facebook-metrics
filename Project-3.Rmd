@@ -1,0 +1,151 @@
+---
+title: "Project-3"
+author: "Dongyu Wang"
+date: "2023-10-25"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project Deliverable 3 Q3
+## Outcome Page.total.likes, main predictor Type 
+
+```{r Dataset}
+library(dplyr)
+library(ggplot2)
+library(GGally)
+library(RNOmni)
+library(car)
+setwd("C:/Users/wdy24/Dropbox/BU_PHD/Coursework/BU MA series/MA575/Lab/Project/Code_dataset")
+fb <- read.csv(file="dataset_Facebook(3).csv",header = T,sep = ";")
+```
+
+## Descriptive analysis 
+
+```{r Desc}
+attach(fb)
+table(fb$Type, useNA = 'always')
+boxplot(Page.total.likes ~ Type)
+boxplot(Page.total.likes ~ Category)
+boxplot(Page.total.likes ~ Paid)
+ln_like <- log(Page.total.likes)
+hist(ln_like)
+hist(Page.total.likes)
+tapply(Page.total.likes,Type, summary)
+fb$rn_page.total.likes <- RankNorm(Page.total.likes,ties.method = "average")
+summary(fb$rn_page.total.likes)
+sd(fb$rn_page.total.likes)
+hist(fb$rn_page.total.likes)
+attach(fb)
+## Page.total.likes highly skewed toward the left - need to transform but first proceed with the MV model and see diagnostics 
+## Inital variable selection from scatter plot + heatmap 
+## Type Post.Month Post.Weekday Post.Hour Total.Interactions Lifetime.Post.Consumers
+
+plot(Page.total.likes ~ Post.Month)
+plot(Page.total.likes ~ Post.Weekday)
+plot(Page.total.likes ~ Post.Hour)
+
+plot(Page.total.likes ~ like)
+plot(Page.total.likes ~ share)
+plot(Page.total.likes ~ comment)
+plot(Page.total.likes ~ Total.Interactions,subset = Total.Interactions < 6000)
+
+plot(Page.total.likes ~ Lifetime.Post.Consumers)
+
+# temp_data <- fb %>% select("Page.total.likes",starts_with("Lifetime"))
+# pair1<- ggpairs(temp_data,
+#         lower=list(continuous=wrap("cor", alpha=0.5), combo="box"),
+#         upper=list(continuous=wrap("points", alpha=0.3, size=0.1)), labeller = label_wrap_gen(5, multi_line = TRUE)) 
+# pair1<- pair1 + theme(axis.text.x = element_text(angle = 40, hjust = 1, size = 7), axis.text.y = element_text(vjust = 1, size = 7))
+# pair1
+
+
+```
+
+## Fit the MV model
+
+```{r MV models}
+## dummy variable for type
+fb$type.photo <- ifelse(Type == c("Photo"),1,0)
+fb$type.status <- ifelse(Type == c("Status"),1,0)
+fb$type.video <- ifelse(Type == c("Video"),1,0)
+
+## simple linear model 
+
+m00 <- lm(Page.total.likes~type.photo+type.status+type.video, data=fb)
+summary(m00)
+plot(m00)
+
+
+## simple linear model - rank normalized 
+m0 <- lm(rn_page.total.likes~type.photo+type.status+type.video, data=fb)
+summary(m0)
+plot(m0)
+
+
+
+## first model - initial try
+m1 <- lm(Page.total.likes~type.photo+type.status+type.video+Post.Month+Post.Weekday+Post.Hour+Total.Interactions+Lifetime.Post.Consumers, data=fb)
+summary(m1)
+plot(m1)
+
+## model diagnostics are way off... will need to: 1) transform the outcome 
+##                                                2) add in a squared term 
+##                                                3) check collinearity 
+##                                                4) create one time variable instead of 3 
+
+## M2 Rank normalize the outcome 
+m2 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Post.Month+Post.Weekday+Post.Hour+Total.Interactions+Lifetime.Post.Consumers, data=fb)
+summary(m2)
+plot(m2)
+plot(rstandard(m2)~Post.Month)
+plot(rstandard(m2)~Post.Weekday)
+plot(rstandard(m2)~Post.Hour)
+plot(rstandard(m2)~Total.Interactions)
+
+## better but still not good - quadratic trend with post.month- try adding a cubic term and a sqaured term  
+m3 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Post.Month+I(Post.Month^2)+I(Post.Month^3)+Post.Weekday+Post.Hour+Total.Interactions+Lifetime.Post.Consumers, data=fb)
+summary(m3)
+plot(m3)
+
+## not good - remove non-sig variables
+m4 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Post.Month+I(Post.Month^2)+I(Post.Month^3)+Total.Interactions+Lifetime.Post.Consumers, data=fb)
+summary(m4)
+plot(m4)
+
+## still not meeting all assumptions - remove post.hour since it's not a linear association with page total likes;
+m5 <- lm(rn_page.total.likes~type.photo+type.status+type.video++Total.Interactions+Lifetime.Post.Consumers, data=fb)
+summary(m5)
+plot(m5)
+
+## significant better but spotted a bad outlier #447 - remove and fit again 
+fb2 <- fb[-c(447,245),]
+m6 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Total.Interactions+Lifetime.Post.Consumers, data=fb2)
+summary(m6)
+
+plot(m6)
+
+## model comparison using F test
+anova(m0,m5)
+
+## check collinearity
+
+vif(m6)
+
+## final model 
+
+summary(m6)
+
+```
+
+## Visualization
+
+```{r plots}
+## m3
+avPlots(m3)
+## m6
+avPlots(m6)
+
+```
