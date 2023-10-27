@@ -9,12 +9,70 @@ output:
 
 ```{r data, include=FALSE}
 library(tidyverse)
+library(ggplot2)
 df <- read.csv("data/dataset_Facebook.csv",header=T,sep=";")
 df
+
+
 ```
 
 
-```{r lm}
+
+
+
+```{r q1 EDA}
+
+#Boxplots for both variables
+boxplot(df$Lifetime.Post.Consumptions ~ df$Paid,
+        main = 'Boxplot of Paid advertising and Lifetime Post Consumptions',
+       xlab = 'Companies using Paid Avertising',
+       ylab = 'Number of Lifetime Post Consumptions')
+
+boxplot(log(df$Lifetime.Post.Consumptions) ~ df$Paid,
+       # ylim = c(0,5000),
+       main = 'Boxplot of Paid avertising and Log Lifetime Post Consumptions',
+       xlab = 'Companies using Paid Avertising',
+       ylab = 'Number of Log Lifetime Post Consumptions')
+
+counts_paid <- table(df$Paid)
+
+#Barplot of Count for Paid Advertising
+barplot(counts_paid, main="Advertising Distribution",
+   xlab ="Number of Companies using Paid Advertising",
+   ylim = c(0,500))
+
+#Histogram for number of Lifetime Post Consumption
+hist(df_paid$Lifetime.Post.Consumptions,
+     main = "Histogram of Lifetime Post Consumptions",
+     xlab = "Number of Post Consumptions")
+
+
+```
+
+```{r q2 EDA}
+
+#Boxplots for both variables
+boxplot(df$Lifetime.Post.Consumptions ~ df$Lifetime.Engaged.Users,
+        main = 'Boxplot of Lifetime Engaged Users and Lifetime Post Consumptions',
+        xlab = 'Number of Lifetime Engaged Users',
+        ylab = 'Number of Lifetime Post Consumptions')
+
+boxplot(log(df$Lifetime.Post.Consumptions) ~ df$Lifetime.Engaged.Users,
+       main = 'Boxplot of Lifetime Engaged Users and Log Lifetime Post Consumptions',
+        xlab = 'Number of Lifetime Engaged Users',
+        ylab = 'Number of Lifetime Post Consumptions')
+
+#Histogram for number of unique engaged users
+hist(df$Lifetime.Engaged.Users,
+     main = "Histogram of Lifetime Engaged Users",
+     xlab = "Number of Lifetime Engaged Users")
+
+#Histogram for number of Lifetime Post Consumption
+hist(df$Lifetime.Post.Consumptions,
+     main = "Histogram of Lifetime Post Consumptions",
+     xlab = "Numnber of Lifetime Post Consumptions")
+
+#Scatterplot for both variables
 LM <- lm(df$Lifetime.Engaged.Users ~ df$Lifetime.Post.Consumptions)
 df %>% 
   ggplot(aes(x = Lifetime.Post.Consumptions, y = Lifetime.Engaged.Users)) + 
@@ -23,6 +81,29 @@ df %>%
   ylab("Lifetime Engaged Users") + 
   ggtitle("Lifetime Engaged Users vs Lifetime Post Consumptions") + 
   geom_smooth(method='lm', formula= y~x)
+```
+
+
+```{r q3 EDA}
+
+#Boxplots for both variables
+boxplot(df$like ~ df$Type,
+        main = 'Boxplot of Likes on Post and Type of Post',
+        xlab = 'Type of Post',
+        ylab = 'Number of Likes')
+
+
+#Barplot of Count for Types of Posts
+counts_type <- table(df$Type)
+barplot(counts_type, main="Type Distribution",
+   xlab="Types of Post",
+   ylim = c(0,500))
+
+#Histogram for Number of Likes on Post
+hist(df$like,
+     main = "Histogram of Likes on Post",
+     xlab = "Number of Likes on Post")
 
 ```
+
 
