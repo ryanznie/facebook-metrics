@@ -85,58 +85,39 @@ summary(m0)
 plot(m0)
 
 
-
 ## first model - initial try
-m1 <- lm(Page.total.likes~type.photo+type.status+type.video+Post.Month+Post.Weekday+Post.Hour+Total.Interactions+Lifetime.Post.Consumers, data=fb)
+m1 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Total.Interactions+Lifetime.Post.Consumers+Lifetime.Post.Consumptions, data=fb)
 summary(m1)
 plot(m1)
+AIC(m1)
 
-## model diagnostics are way off... will need to: 1) transform the outcome 
+## outlines diagnostics are way off... will need to: 1) remove bad outliers  
 ##                                                2) add in a squared term 
 ##                                                3) check collinearity 
-##                                                4) create one time variable instead of 3 
 
-## M2 Rank normalize the outcome 
-m2 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Post.Month+Post.Weekday+Post.Hour+Total.Interactions+Lifetime.Post.Consumers, data=fb)
+
+## better but still not good - remove bad outliers 447 245
+fb2 <- fb[-c(447,245),]
+m2 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Total.Interactions+Lifetime.Post.Consumers+Lifetime.Post.Consumptions, data=fb2)
 summary(m2)
 plot(m2)
-plot(rstandard(m2)~Post.Month)
-plot(rstandard(m2)~Post.Weekday)
-plot(rstandard(m2)~Post.Hour)
-plot(rstandard(m2)~Total.Interactions)
+AIC(m2)
 
-## better but still not good - quadratic trend with post.month- try adding a cubic term and a sqaured term  
-m3 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Post.Month+I(Post.Month^2)+I(Post.Month^3)+Post.Weekday+Post.Hour+Total.Interactions+Lifetime.Post.Consumers, data=fb)
+##remove consumption
+m3 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Total.Interactions+Lifetime.Post.Consumers, data=fb2)
 summary(m3)
 plot(m3)
 
-## not good - remove non-sig variables
-m4 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Post.Month+I(Post.Month^2)+I(Post.Month^3)+Total.Interactions+Lifetime.Post.Consumers, data=fb)
-summary(m4)
-plot(m4)
-
-## still not meeting all assumptions - remove post.hour since it's not a linear association with page total likes;
-m5 <- lm(rn_page.total.likes~type.photo+type.status+type.video++Total.Interactions+Lifetime.Post.Consumers, data=fb)
-summary(m5)
-plot(m5)
-
-## significant better but spotted a bad outlier #447 - remove and fit again 
-fb2 <- fb[-c(447,245),]
-m6 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Total.Interactions+Lifetime.Post.Consumers, data=fb2)
-summary(m6)
-
-plot(m6)
-
-## model comparison using F test
-anova(m0,m5)
+##partial F test
+anova(m2,m3)
 
 ## check collinearity
 
-vif(m6)
+vif(m3)
 
 ## final model 
 
-summary(m6)
+summary(m3)
 
 ```
 
@@ -144,8 +125,8 @@ summary(m6)
 
 ```{r plots}
 ## m3
+par(mfrow=c(2,2))
+plot(m3)
 avPlots(m3)
-## m6
-avPlots(m6)
 
 ```
