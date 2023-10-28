@@ -7,7 +7,7 @@ output:
   html_document: default
 ---
 
-```{r data, echo=FALSE, include=FALSE}
+```{r data, include=FALSE, echo=FALSE}
 library(tidyverse)
 df <- read.csv("data/dataset_Facebook.csv",header=T,sep=";")
 df
@@ -15,31 +15,19 @@ df
 
 ```{r descriptive}
 sapply(df, function(x) sum(is.na(x)))
-
 data.frame(do.call(cbind, lapply(na.omit(df), summary)))
 ```
 
-```{r}
-colnames(df) <- sub("Lifetime", "LT", colnames(df))
-colnames(df) <- sub("Post", "P", colnames(df))
-colnames(df) <- sub("post", "P", colnames(df))
-colnames(df) <- sub("Total", "Tot", colnames(df))
-colnames(df) <- sub("total", "tot", colnames(df))
-colnames(df) <- sub("Page", "Pg", colnames(df))
-colnames(df) <- sub("people", "ppl", colnames(df))
-colnames(df) <- sub("People", "ppl", colnames(df))
-colnames(df) <- sub("engaged", "eng", colnames(df))
-colnames(df) <- sub("Consumptions", "Consump", colnames(df))
-colnames(df) <- sub("have.", "", colnames(df))
-colnames(df) <- sub("Impressions", "Imp", colnames(df))
-colnames(df) <- sub("your.", "", colnames(df))
-
-# can prob map this
+```{r ColMapping}
+colmapping <- letters[0:ncol(df)]
+tibble(colnames(df), colmapping)
+mapped_df <- df %>% rename(!!!setNames(names(.), colmapping))
+mapped_df
 ```
 
 ```{r cor}
 library(reshape2)
-numerical_df <- df[sapply(df, is.numeric)]
+numerical_df <- mapped_df[sapply(mapped_df, is.numeric)]
 corr_mat <- cor(numerical_df, use = "complete.obs")
 
 melted_corr <- melt(corr_mat)
@@ -57,14 +45,22 @@ ggplot(data = melted_corr, aes(x = Var1, y = Var2, fill = value)) +
   scale_x_discrete(expand = c(0, 0)) +
   scale_y_discrete(expand = c(0, 0)) +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45))
+  theme(axis.text.x = element_text(angle = 0)) + 
+  ggtitle("Correlation Matrix of Continuous Variables")
 
-# ggsave(file="cor.png", width=20, height=25, dpi=300)
+ggsave(file="cor.png") #, width=20, height=25, dpi=300)
 ```
 
 ```{r pairCor}
 library(GGally)
-num_df <- numerical_df #%>% select(!c('Post.Month', 'Post.Weekday', 'Post.Hour', 'Paid', 'Category'))
-ggpairs(num_df)
-```
+num_df <- na.omit(numerical_df)
+ggpairs(num_df, progress = FALSE, 
+        upper = list(continuous = wrap("cor", size = 1)),
+        lower = list(continuous = wrap("points", alpha = 0.3,    size=0.05)),
+        title = "Scatterplot matrix of Facebook Metrics") +
+  theme(axis.line=element_blank(), 
+        axis.text=element_blank(),
+        axis.ticks=element_blank())
 
+ggsave(file='pairCor.png')
+```
