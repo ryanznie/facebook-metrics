@@ -38,6 +38,12 @@ fb$rn_page.total.likes <- RankNorm(Page.total.likes,ties.method = "average")
 summary(fb$rn_page.total.likes)
 sd(fb$rn_page.total.likes)
 hist(fb$rn_page.total.likes)
+inv <- 1/Page.total.likes
+hist(inv)
+minmax <- (Page.total.likes-min(Page.total.likes))/(max(Page.total.likes)-min(Page.total.likes))
+hist(minmax)
+
+
 attach(fb)
 ## Page.total.likes highly skewed toward the left - need to transform but first proceed with the MV model and see diagnostics 
 ## Inital variable selection from scatter plot + heatmap 
