@@ -1,0 +1,80 @@
+---
+title: "statistic model question 2"
+output: html_document
+date: '2023-10-27'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r import data}
+dataf<- read.csv2("facebook-metrics/dataset_Facebook.csv")
+```
+
+```{r subset1}
+q1<-dataf %>% select(Lifetime.Post.Consumptions,Lifetime.Post.Consumers,Lifetime.Engaged.Users,Lifetime.People.who.have.liked.your.Page.and.engaged.with.your.post)
+newname<-c("consumptions", "consumers", "engagedu", "likeandengaged")
+tibble(colnames(q1),newname)
+mq1<-q1 %>% rename(!!!set_names(names(.), newname))
+```
+From EDA result, we know that the lifetime post consumption has strong relationship with 
+
+```{r subset2}
+q2<- dataf %>% select(Lifetime.Post.Consumptions,Lifetime.Engaged.Users)
+mq2<-q2 %>% rename(!!!set_names(names(.), newname[c(1,3)]))
+```
+
+
+
+```{r original model}
+model1<-lm( consumptions ~ consumers + engagedu + likeandengaged , data = mq1)
+summary(model1)
+pairs(consumptions~consumers + engagedu + likeandengaged, data = mq1)
+library(alr3)
+summary(bctrans(model1))
+pairs(log(consumptions)~log(consumers) + log(engagedu) + log(likeandengaged) , data = mq1)
+model11<-lm(log(consumptions)~log(consumers) + log(engagedu) + log(likeandengaged) , data = mq1)
+summary(model11)
+par(mfrow=c(2,2))
+plot(model11)
+par(mfrow=c(2,2))
+avPlots(model11)
+## Despite the F-value shows that the model is significant, only one predictor is significant. There is a clear pattern in the standardized residual plot despite the high p-value indicating the significance of predictors. Therefore, the model is invalid.
+```
+
+```{r model transform}
+library(alr3)
+summary(bctrans(model1))
+
+```
+
+```{data co}
+#change the variables names in more convinient way 
+q2 %>% rename(!!'interact_times':= 'Lifetime.Post.Consumptions', !! 'unique_pp':= 'Lifetime.People.who.have.liked.your.Page.and.engaged.with.your.post')
+# Besides the unique users predictors, we want to find more to 
+```
+
+#Is there a linear association between lifetime post consumption (predictor) and unique user engagement (outcome)?
+We are interesting in exploring the linear relationship beween lifetime post consumption and user engagment, which the multiple lifetime post consumption is made by a single user or multiple user. Would increasing the lifetime post consumption through promoting the post leads to more people to interact with the post?   
+
+```{r model2}
+mq22<-mq1[-c(43,80,89,97,104,111,132,145,279,287,269,423,424,425,427,428,429,430,432,433,434,435,436,437),]
+model2<-lm(log(consumptions) ~ log(consumers) + log(engagedu) + log(likeandengaged), data = mq22)
+pairs(log(consumptions) ~ log(consumers) + log(engagedu) + log(likeandengaged), data = mq22)
+summary(model2)
+par(mfrow=c(2,2))
+k<-plot(model2)
+#mq22<-mq1[-c(279,287,269),]
+#mq22<-mq22[-c(425,430),]
+
+```
+
+
