@@ -1,0 +1,138 @@
+---
+title: "Project-3"
+author: "Dongyu Wang"
+date: "2023-10-25"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project Deliverable 3 Q3
+## Outcome Page.total.likes, main predictor Type 
+
+```{r Dataset}
+library(dplyr)
+library(ggplot2)
+library(GGally)
+library(RNOmni)
+library(car)
+setwd("C:/Users/wdy24/Dropbox/BU_PHD/Coursework/BU MA series/MA575/Lab/Project/Code_dataset")
+fb <- read.csv(file="dataset_Facebook(3).csv",header = T,sep = ";")
+```
+
+## Descriptive analysis 
+
+```{r Desc}
+attach(fb)
+table(fb$Type, useNA = 'always')
+boxplot(Page.total.likes ~ Type)
+boxplot(Page.total.likes ~ Category)
+boxplot(Page.total.likes ~ Paid)
+ln_like <- log(Page.total.likes)
+hist(ln_like)
+hist(Page.total.likes)
+tapply(Page.total.likes,Type, summary)
+fb$rn_page.total.likes <- RankNorm(Page.total.likes,ties.method = "average")
+summary(fb$rn_page.total.likes)
+sd(fb$rn_page.total.likes)
+hist(fb$rn_page.total.likes)
+inv <- 1/Page.total.likes
+hist(inv)
+minmax <- (Page.total.likes-min(Page.total.likes))/(max(Page.total.likes)-min(Page.total.likes))
+hist(minmax)
+
+
+attach(fb)
+## Page.total.likes highly skewed toward the left - need to transform but first proceed with the MV model and see diagnostics 
+## Inital variable selection from scatter plot + heatmap 
+## Type Post.Month Post.Weekday Post.Hour Total.Interactions Lifetime.Post.Consumers
+
+plot(Page.total.likes ~ Post.Month)
+plot(Page.total.likes ~ Post.Weekday)
+plot(Page.total.likes ~ Post.Hour)
+
+plot(Page.total.likes ~ like)
+plot(Page.total.likes ~ share)
+plot(Page.total.likes ~ comment)
+plot(Page.total.likes ~ Total.Interactions,subset = Total.Interactions < 6000)
+
+plot(Page.total.likes ~ Lifetime.Post.Consumers)
+
+# temp_data <- fb %>% select("Page.total.likes",starts_with("Lifetime"))
+# pair1<- ggpairs(temp_data,
+#         lower=list(continuous=wrap("cor", alpha=0.5), combo="box"),
+#         upper=list(continuous=wrap("points", alpha=0.3, size=0.1)), labeller = label_wrap_gen(5, multi_line = TRUE)) 
+# pair1<- pair1 + theme(axis.text.x = element_text(angle = 40, hjust = 1, size = 7), axis.text.y = element_text(vjust = 1, size = 7))
+# pair1
+
+
+```
+
+## Fit the MV model
+
+```{r MV models}
+## dummy variable for type
+fb$type.photo <- ifelse(Type == c("Photo"),1,0)
+fb$type.status <- ifelse(Type == c("Status"),1,0)
+fb$type.video <- ifelse(Type == c("Video"),1,0)
+
+## simple linear model 
+
+m00 <- lm(Page.total.likes~type.photo+type.status+type.video, data=fb)
+summary(m00)
+plot(m00)
+
+
+## simple linear model - rank normalized 
+m0 <- lm(rn_page.total.likes~type.photo+type.status+type.video, data=fb)
+summary(m0)
+plot(m0)
+
+
+## first model - initial try
+m1 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Total.Interactions+Lifetime.Post.Consumers+Lifetime.Post.Consumptions, data=fb)
+summary(m1)
+plot(m1)
+AIC(m1)
+
+## outlines diagnostics are way off... will need to: 1) remove bad outliers  
+##                                                2) add in a squared term 
+##                                                3) check collinearity 
+
+
+## better but still not good - remove bad outliers 447 245
+fb2 <- fb[-c(447,245),]
+m2 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Total.Interactions+Lifetime.Post.Consumers+Lifetime.Post.Consumptions, data=fb2)
+summary(m2)
+plot(m2)
+AIC(m2)
+
+##remove consumption
+m3 <- lm(rn_page.total.likes~type.photo+type.status+type.video+Total.Interactions+Lifetime.Post.Consumers, data=fb2)
+summary(m3)
+plot(m3)
+
+##partial F test
+anova(m2,m3)
+
+## check collinearity
+
+vif(m3)
+
+## final model 
+
+summary(m3)
+
+```
+
+## Visualization
+
+```{r plots}
+## m3
+par(mfrow=c(2,2))
+plot(m3)
+avPlots(m3)
+
+```
