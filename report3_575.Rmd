@@ -1,0 +1,145 @@
+---
+title: "report3_575"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-10-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(GGally)
+library(ggplot2)
+library(dplyr)
+library(car)
+library(readr)
+library(MASS)
+```
+
+
+library(GGally)
+library(ggplot2)
+library(dplyr)
+library(car)
+library(readr)
+library(MASS)
+
+
+## Data loading and preprocessing
+
+For the 'Paid' column, replace missing values with the mode
+ For 'like' and 'share', replace missing values with their medians
+
+```{r load_data}
+data <- read.csv(file="../fb.csv",header = T,sep = ";")
+mode_paid <- as.numeric(names(sort(table(data$Paid), decreasing=TRUE)[1]))
+data$Paid[is.na(data$Paid)] <- mode_paid
+
+data$Lifetime.Post.Total.Reach[is.na(data$Lifetime.Post.Total.Reach)] <- median(data$Lifetime.Post.Total.Reach, na.rm=TRUE)
+
+data$Lifetime.Post.reach.by.people.who.like.your.Page[is.na(data$Lifetime.Post.reach.by.people.who.like.your.Page)] <- median(data$Lifetime.Post.reach.by.people.who.like.your.Page, na.rm=TRUE)
+
+data$Total.Interactions[is.na(data$Total.Interactions)] <- median(data$Total.Interactions, na.rm=TRUE)
+
+data$Page.total.likes[is.na(data$Page.total.likes)] <- median(data$Page.total.likes, na.rm=TRUE)
+
+```
+
+
+
+## Data visualization
+
+```{r data_vis, echo=FALSE}
+with(data, plot(Lifetime.Post.reach.by.people.who.like.your.Page, Lifetime.Post.Total.Reach,
+                main="Scatter Plot",
+                xlab="Lifetime.Post.reach.by.people.who.like.your.Page",
+                ylab="Lifetime.Post.Total.Reach"))
+
+
+with(data, plot(Total.Interactions, Lifetime.Post.Total.Reach,
+                main="Scatter Plot",
+                xlab="Total.Interactions",
+                ylab="Lifetime.Post.Total.Reach"))
+
+with(data, plot(Page.total.likes, Lifetime.Post.Total.Reach,
+                main="Scatter Plot",
+                xlab="Page.total.likes",
+                ylab="Lifetime.Post.Total.Reach"))
+
+```
+
+
+
+## Inital MLR Model
+
+
+```{r init_MLR, echo=FALSE}
+initial_mlr_model <- lm(Lifetime.Post.Total.Reach ~ Paid + Lifetime.Post.reach.by.people.who.like.your.Page + Total.Interactions + Page.total.likes + Post.Month + Post.Weekday + Post.Hour, data=data)
+
+summary(initial_mlr_model)
+```
+## Inital MLR Model Diagnostics
+
+```{r init_MLR_diagnostics, echo=FALSE}
+par(mfrow=c(2,2)) 
+plot(initial_mlr_model, which=1:3)
+```
+
+## Inital MLR Model AV Plots
+```{r init_MLR_avplot, echo=FALSE}
+avPlots(initial_mlr_model)
+```
+
+
+## Log-log transformed Model (fm)
+
+```{r log_log_mode, echo=FALSE}
+
+data$Total.Interactions <- data$Total.Interactions + 1e-10 # To avoid log(0)=-inf
+fm <- lm(log(Lifetime.Post.Total.Reach) ~ Paid + log(Lifetime.Post.reach.by.people.who.like.your.Page) + log(Total.Interactions),
+            data=data)
+summary(fm)
+```
+
+## Log-log transformed Model Diagnostics
+
+```{r fm_MLR_diagnostics, echo=FALSE}
+par(mfrow=c(2,2)) 
+plot(fm, which=1:3)
+
+```
+
+
+## Handle Bad Leverage Points
+
+hat_values <- hatvalues(fm)
+std_residuals <- rstandard(fm)
+p = 3
+n = 500
+high_leverage <- which(hat_values > (2*(p+1))/n)
+outliers <- which(abs(std_residuals) > 2)
+
+to_remove <- intersect(high_leverage, outliers)
+length(to_remove)
+
+```{r handle_bad_lev, echo=FALSE}
+hat_values <- hatvalues(fm)
+std_residuals <- rstandard(fm)
+p = 3
+n = 500
+high_leverage <- which(hat_values > (2*(p+1))/n)
+outliers <- which(abs(std_residuals) > 2)
+
+to_remove <- intersect(high_leverage, outliers)
+length(to_remove)
+```
+
+
+## Log-log transformed Model AV Plots
+```{r fm_MLR_avplot, echo=FALSE}
+avPlots(fm)
+```
+
+
+
+
