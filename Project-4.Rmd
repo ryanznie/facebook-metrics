@@ -1,0 +1,72 @@
+---
+title: "Project 4"
+author: "Dongyu Wang"
+date: "2023-11-10"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Descriptive analysis
+
+```{r Descriptive}
+library(GGally)
+library(car)
+library(ggplot2)
+library(dplyr)
+library(table1)
+library(MLmetrics)
+library(caret)
+
+
+setwd("C:/Users/wdy24/Dropbox/BU_PHD/Coursework/BU MA series/MA575/Lab/Lab10")
+df <- read.csv("facebook_updated.csv")
+summary(df)
+dim(df)
+need <- c("Lifetime.Post.Consumers", "Category", "Page.total.likes", "Type", "Post.Month", "Post.Hour", "Post.Weekday", "Paid")
+new_df <- subset(df, select = need)
+summary(new_df)
+new_df <- na.omit(new_df)
+#removed 1  obs with missing paid info
+new_df$Category <- as.factor(new_df$Category)
+new_df$Type <- as.factor(new_df$Type)
+new_df$Paid <- as.factor(new_df$Paid)
+table1(~ factor(Paid) + factor(Type) + factor(Category) + Page.total.likes + Post.Month + Post.Hour + Post.Weekday + Lifetime.Post.Consumers,data=new_df)
+
+pair1 <- ggpairs(new_df,
+          upper=list(continuous=wrap("cor", alpha=0.5), combo="box_no_facet"),
+          lower=list(continuous=wrap("points", alpha=0.3, size=0.1)), labeller = label_wrap_gen(10, multi_line = TRUE)) 
+pair1 <- pair1 + theme(axis.text.x = element_text(angle = 40, hjust = 1, size = 5), axis.text.y = element_text(vjust = 1, size = 5), text= element_text(size = 10))
+pair1
+
+```
+
+## Splitting data
+
+
+```{r split}
+set.seed(20231110)
+index <- createDataPartition(y = new_df$Lifetime.Post.Consumers, p = 0.5, list = FALSE)
+
+# Create a new variable called Type assigning observations to training/validation
+new_df$data <- NA
+new_df$data[index] <- "Training"
+new_df$data[-index] <- "Validation"
+
+table1(~ factor(Paid) + factor(Type) + factor(Category) + Page.total.likes + Post.Month + Post.Hour + Post.Weekday + Lifetime.Post.Consumers|data,data=new_df)
+
+training <- new_df[which(new_df$data == c('Training')),]
+
+pair2 <- ggpairs(training,
+          upper=list(continuous=wrap("cor", alpha=0.5), combo="box_no_facet"),
+          lower=list(continuous=wrap("points", alpha=0.3, size=0.1)), labeller = label_wrap_gen(10, multi_line = TRUE)) 
+pair2 <- pair2 + theme(axis.text.x = element_text(angle = 40, hjust = 1, size = 5), axis.text.y = element_text(vjust = 1, size = 5), text= element_text(size = 10))
+pair2
+
+boxplot(Lifetime.Post.Consumers~Category,data=training)
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
