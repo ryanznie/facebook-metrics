@@ -1,7 +1,7 @@
 ---
 title: "facebook-metrics"
 author: "Ryan Nie"
-date: "9/29/2023"
+date: "10/29/2023"
 output:
   pdf_document: default
   html_document: default
@@ -22,7 +22,6 @@ data.frame(do.call(cbind, lapply(na.omit(df), summary)))
 colmapping <- letters[0:ncol(df)]
 tibble(colnames(df), colmapping)
 mapped_df <- df %>% rename(!!!setNames(names(.), colmapping))
-mapped_df
 ```
 
 ```{r cor}
@@ -57,7 +56,7 @@ num_df <- na.omit(numerical_df)
 ggpairs(num_df, progress = FALSE, 
         upper = list(continuous = wrap("cor", size = 1)),
         lower = list(continuous = wrap("points", alpha = 0.3,    size=0.05)),
-        title = "Scatterplot matrix of Facebook Metrics") +
+        title = "Pairs Plot of Facebook Metrics") +
   theme(axis.line=element_blank(), 
         axis.text=element_blank(),
         axis.ticks=element_blank())
