@@ -63,3 +63,26 @@ ggpairs(num_df, progress = FALSE,
 
 ggsave(file='pairCor.png')
 ```
+
+```{r modelUpdatedData}
+library(caret)
+model_df <- read.csv('data/facebook_updated.csv')
+train_df <- model_df %>% filter(obs_type == 'Training') %>% select(c(Lifetime.Post.Consumers, Category, Page.total.likes, Type, Post.Month, Post.Hour, Post.Weekday, Paid))
+transform <- train_df %>% select(c(Lifetime.Post.Consumers, Page.total.likes, Post.Month, Post.Hour, Post.Weekday))
+
+boxcox_result <- preProcess(transform, method = "BoxCox")
+boxcox_result
+transformed_data <- predict(boxcox_result, newdata = transform)
+transformed_data <- cbind(transformed_data, train_df$Type, train_df$Category, train_df$Paid)
+transformed_data
+
+m <-
+  lm(
+    Lifetime.Post.Consumers ~ factor(train_df$Category) + Page.total.likes + factor(train_df$Type) +
+      Post.Month + Post.Hour + Post.Weekday + factor(train_df$Paid),
+    data = transformed_data
+  )
+summary(m)
+```
+
+
