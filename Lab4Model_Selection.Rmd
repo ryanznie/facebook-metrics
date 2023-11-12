@@ -100,5 +100,9 @@ anova(full_model, reduced_model_2)
 #... The reduced model 2 may be better fit than full model given lower AIC and insignificant Partial... #... F-test
 
 ```
+```{r diagnostic}
+par(mfrow=c(2,2)) 
+plot(reduced_model_2)
+```
 # Conclusion:
 ## lm(tLifetime.Post.Consumers ~ I(Page.total.likes^2) +Type + Post.Month + Paid, data = t_train_df)
