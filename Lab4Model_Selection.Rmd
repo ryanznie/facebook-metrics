@@ -62,6 +62,10 @@ stepwise_model <- step(full_model, direction = "both")
 
 reduced_model<-lm(tLifetime.Post.Consumers~Page.total.likes + Type + Post.Month+Paid, data=t_train_df)
 summary(reduced_model)
+# added variable plots
+avPlots(reduced_model)
+# variance inflation factors
+vif(reduced_model)
 
 ```
 
@@ -70,7 +74,7 @@ anova(full_model, reduced_model)
 #Insignificant p-value of F-test indicates excluding these predictors may not affect the model fit...
 #... The reduced model may be better fit than full model given lower AIC and insignificant Partial... #... F-test
 ```
-```{r stepregression with transformation}
+```{r step regression with transformation}
 #fit the full model with all predictors with transformation on Page.total.likes
 full_model_2<-lm(
     tLifetime.Post.Consumers ~ Category +Page.total.likes+ I(Page.total.likes^2) + Type +
@@ -90,6 +94,8 @@ reduced_model_2<-lm(tLifetime.Post.Consumers ~ I(Page.total.likes^2) + Type + Po
 ```{r }
 #examine reduced_model_2
 summary(reduced_model_2)
+vif(reduced_model_2)
+avPlots(reduced_model_2)
 ```
 
 ```{r partial F test 2}
@@ -100,6 +106,16 @@ anova(full_model, reduced_model_2)
 #... The reduced model 2 may be better fit than full model given lower AIC and insignificant Partial... #... F-test
 
 ```
+
+```{r BIC}
+
+sprintf(paste("BIC of full model", BIC(full_model)))
+sprintf(paste("BIC of 1st reduced model", BIC(reduced_model)))
+sprintf(paste("BIC of 2ed reduced model", BIC(reduced_model_2)))
+
+```
+
+
 ```{r diagnostic}
 par(mfrow=c(2,2)) 
 plot(reduced_model_2)
