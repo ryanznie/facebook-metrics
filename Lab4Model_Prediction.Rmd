@@ -1,0 +1,215 @@
+---
+title: "Model Selection & Prediction"
+author: "Yuqing Yang & Brandon Lau"
+date: "11/12/2023"
+output:
+  pdf_document: default
+---
+```{r setup, include=FALSE, echo=FALSE}
+install.packages("MLmetrics")
+library(car)
+library(glmnet)
+library(caret)
+library(tidyverse)
+library(GGally)
+library(psych)
+library(ggplot2)
+library(dplyr)
+library(MLmetrics)
+model_df <- read.csv('./facebook_updated.csv')
+```
+
+# Please refer to facebook-metrics.Rmd in Ryan branch for Matrix of correlation and EDA
+
+# This Rmd is used for model selection
+
+```{r transform}
+train_df <- model_df %>% filter(obs_type == 'Training') %>% select(c(Lifetime.Post.Consumers, Category, Page.total.likes, Type, Post.Month, Post.Hour, Post.Weekday, Paid))
+# transform on numerical variables only
+transform <- train_df %>% select(c(Lifetime.Post.Consumers, Page.total.likes)) 
+
+boxcox_result <- preProcess(transform, method = "BoxCox")
+boxcox_result
+
+# only log transform on `Lifetime.Post.Consumers`
+# `Page.total.likes**2` does not normalize distribution according to histogram... 
+# ... Keep Page.total.likes as original form currently
+t_train_df<-train_df %>% mutate(tLifetime.Post.Consumers=log(Lifetime.Post.Consumers))
+
+```
+
+
+```{r model_fitting}
+#fit the full model with all predictors
+full_model<-lm(
+    tLifetime.Post.Consumers ~ Category + Page.total.likes + Type +
+      Post.Month + Post.Hour + Post.Weekday + Paid, data = t_train_df)
+#examine full model regression
+summary(full_model)
+```
+
+```{r}
+# added variable plots
+avPlots(full_model)
+# variance inflation factors
+vif(full_model)
+```
+```{r stepwise regression}
+
+stepwise_model <- step(full_model, direction = "both")
+
+#result shows that the lowest AIC model is...
+#...tLifetime.Post.Consumers ~ Page.total.likes + Type + Post.Month + ...
+#...Paid
+
+```
+```{r reduced model}
+
+reduced_model<-lm(tLifetime.Post.Consumers~Page.total.likes + Type + Post.Month+Paid, data=t_train_df)
+summary(reduced_model)
+# added variable plots
+avPlots(reduced_model)
+# variance inflation factors
+vif(reduced_model)
+
+```
+
+```{r partial F test}
+anova(full_model, reduced_model)
+#Insignificant p-value of F-test indicates excluding these predictors may not affect the model fit...
+#... The reduced model may be better fit than full model given lower AIC and insignificant Partial... #... F-test
+```
+```{r step regression with transformation}
+#fit the full model with all predictors with transformation on Page.total.likes
+full_model_2<-lm(
+    tLifetime.Post.Consumers ~ Category +Page.total.likes+ I(Page.total.likes^2) + Type +
+      Post.Month + Post.Hour + Post.Weekday + Paid, data = t_train_df)
+stepwise_model_2 <- step(full_model_2, direction = "both")
+
+reduced_model_2<-lm(tLifetime.Post.Consumers ~ I(Page.total.likes^2) + Type + Post.Month + 
+    Paid, data=t_train_df)
+
+#Perform 4 steps by removing some variables
+#The final model includes "I(Page.total.likes^2)", "Type","Post.Month","Paid"
+#The final LOWEST AIC is -201.93, which is smaller than the first stepwide_model
+#Therefore, the reduced_model_2 may be a better fit than reduced_model
+
+```
+
+```{r }
+#examine reduced_model_2
+summary(reduced_model_2)
+vif(reduced_model_2)
+avPlots(reduced_model_2)
+```
+
+```{r partial F test 2}
+
+anova(full_model, reduced_model_2)
+
+#Insignificant p-value of F-test indicates excluding these predictors may not affect the model fit...
+#... The reduced model 2 may be better fit than full model given lower AIC and insignificant Partial... #... F-test
+
+```
+
+```{r BIC}
+
+sprintf(paste("BIC of full model", BIC(full_model)))
+sprintf(paste("BIC of 1st reduced model", BIC(reduced_model)))
+sprintf(paste("BIC of 2ed reduced model", BIC(reduced_model_2)))
+
+```
+
+
+```{r diagnostic}
+par(mfrow=c(2,2)) 
+plot(reduced_model_2)
+```
+# Conclusion:
+## lm(tLifetime.Post.Consumers ~ I(Page.total.likes^2) +Type + Post.Month + Paid, data = t_train_df)
+
+
+```{r Checking Validation Data}
+
+validation_df <- model_df %>% filter(obs_type == 'Validation') %>% select(c(Lifetime.Post.Consumers, Category, Page.total.likes, Type, Post.Month, Post.Hour, Post.Weekday, Paid))
+
+
+
+summary(validation_df)
+summary(t_train_df)
+
+#For categorical variables
+table(model_df$Category, model_df$obs_type)
+table(model_df$Type, model_df$obs_type)
+table(model_df$Post.Month, model_df$obs_type)
+table(model_df$Post.Hour, model_df$obs_type)
+table(model_df$Post.Weekday, model_df$obs_type)
+table(model_df$Paid, model_df$obs_type)
+
+#Comparing the Type observations, observations with the Link and Status type are missing which may hinder evaluation of the predictive abilities of the model.
+
+
+#For continuous variables
+boxplot_data_consumers <- list(train_df$Lifetime.Post.Consumers, validation_df$Lifetime.Post.Consumers)
+
+boxplot_data_likes <- list(train_df$Page.total.likes, validation_df$Page.total.likes)
+
+# Creating boxplots
+boxplot(boxplot_data_consumers, 
+        col = c("blue", "red"),
+        names = c("Train", "Validation"),
+        main = "Lifetime Post Consumer Boxplot: Train vs Validation",
+        xlab = "Categories", ylab = "Values")
+
+boxplot(boxplot_data_likes, 
+        col = c("blue", "red"),
+        names = c("Train", "Validation"),
+        main = "Page Total Likes Boxplot: Train vs Validation",
+        xlab = "Categories", ylab = "Values")
+
+#Presence of a high outlier in Lifetime.Post.Consumers the validation set, could potentially be a bad leverage point, to be taken note of.
+
+```
+
+```{r Model Prediction and Analysis}
+
+validation_df$tPredicted_Lifetime.Post.Consumers <- predict(reduced_model_2,newdata = validation_df)
+
+validation_df$Predicted_Lifetime.Post.Consumers <- exp(validation_df$tPredicted_Lifetime.Post.Consumers)
+
+observed_Y = validation_df$Lifetime.Post.Consumers
+predicted_Y = validation_df$Predicted_Lifetime.Post.Consumers
+
+rmse <- RMSE(predicted_Y, observed_Y)
+mae <- MAE(predicted_Y, observed_Y)
+mape <- MAPE(predicted_Y, observed_Y)
+r_squared <- R2_Score(predicted_Y, observed_Y)
+std_err <- sd(observed_Y - predicted_Y)
+
+
+cat("Root Mean Squared Error (RMSE):", round(rmse, digits = 4), "\n")
+cat("Mean Absolute Error (MAE):", round(mae, digits = 4), "\n")
+cat("R-squared (R^2) Score:", round(r_squared, digits = 4), "\n")
+cat("Mean Absolute Percentage Error (MPE):", round(mape, digits = 4), "\n")
+cat("Residual Standard Error (RSE):", round(std_err, digits = 4), "\n")
+```
+```{r}
+#Scatterplot of Observed vs Predicted
+ggplot(validation_df, aes(x = Lifetime.Post.Consumers, y = Predicted_Lifetime.Post.Consumers)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +
+  labs(x = "Observed Values", y = "Predicted Values",
+       title = "Observed vs. Predicted Values") +
+  theme_bw()
+
+#Residuals Plot
+ggplot(validation_df, aes(x = 1:nrow(validation_df), y = Lifetime.Post.Consumers-Predicted_Lifetime.Post.Consumers)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 0, color = "red", linetype = "dashed") +
+  labs(x = "Observation Index", y = "Residuals",
+       title = "Observed vs. Predicted Values") +
+  theme_bw()
+
+#Single outlier which needs to be looked into
+
+```
