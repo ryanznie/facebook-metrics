@@ -25,15 +25,49 @@ setwd("C:/Users/wdy24/Dropbox/BU_PHD/Coursework/BU MA series/MA575/Lab/Lab10")
 df <- read.csv("facebook_updated.csv")
 summary(df)
 dim(df)
-need <- c("Lifetime.Post.Consumers", "Category", "Page.total.likes", "Type", "Post.Month", "Post.Hour", "Post.Weekday", "Paid")
+need <- c("Lifetime.Post.Consumers", "Category", "Page.total.likes", "Type", "Post.Month", "Post.Hour", "Post.Weekday", "Paid","obs_type")
 new_df <- subset(df, select = need)
 summary(new_df)
 new_df <- na.omit(new_df)
 #removed 1  obs with missing paid info
+
+new_df <- new_df %>% mutate(season =
+                                  ifelse(
+                                    Post.Month == 12 | Post.Month == 1 | Post.Month == 2,
+                                    "4Winter",
+                                    ifelse(
+                                      Post.Month == 3 | Post.Month == 4 | Post.Month == 5,
+                                      "1Spring",
+                                      ifelse(
+                                        Post.Month == 6 | Post.Month == 7 | Post.Month == 8,
+                                        "2Summer",
+                                        ifelse(Post.Month == 9 |
+                                                 Post.Month == 10 |
+                                                 Post.Month == 11, "3Fall",
+                                               NA)
+                                      )
+                                    )
+                                  ))
+
 new_df$Category <- as.factor(new_df$Category)
 new_df$Type <- as.factor(new_df$Type)
 new_df$Paid <- as.factor(new_df$Paid)
-table1(~ factor(Paid) + factor(Type) + factor(Category) + Page.total.likes + Post.Month + Post.Hour + Post.Weekday + Lifetime.Post.Consumers,data=new_df)
+new_df$Lifetime.Post.Consumer.Log <- log(new_df$Lifetime.Post.Consumers)
+new_df$Lifetime.Post.Consumers 
+new_df$Post.Hour.0.5 <- new_df$Post.Hour^0.5
+new_df$Page.total.likes.2 <- new_df$Page.total.likes^2
+new_df$Workhour <- as.factor(ifelse(new_df$Post.Hour %in% c(9,10,11,12,13,14,15,16,17), c("Working"),c("Afterwork")))
+new_df$Weekday <- as.factor(ifelse(new_df$Post.Hour %in% c(2,3,4,5,6), c("Weekday"),c("Weekend")))
+
+table1(~ factor(Paid) + factor(Type) + factor(Category) + Page.total.likes + Page.total.likes.2 + factor(season) + +factor(Weekday) + factor(Workhour) + Lifetime.Post.Consumer.Log|obs_type,data=new_df)
+
+
+new_df$Post.Month <- NULL
+new_df$Post.Hour<- NULL
+new_df$Post.Weekday <- NULL
+new_df$Post.Hour.0.5 <- NULL
+
+
 
 pair1 <- ggpairs(new_df,
           upper=list(continuous=wrap("cor", alpha=0.5), combo="box_no_facet"),
@@ -43,30 +77,70 @@ pair1
 
 ```
 
-## Splitting data
+```{r Seasonality}
+transform <-
+  df %>% select(
+    c(
+      Lifetime.Post.Consumers,
+      Page.total.likes,
+    )
+  )
 
+boxcox_result <- preProcess(transform, method = "BoxCox")
+boxcox_result
 
-```{r split}
-set.seed(20231110)
-index <- createDataPartition(y = new_df$Lifetime.Post.Consumers, p = 0.5, list = FALSE)
+train_df <- new_df[which(new_df$obs_type == c("Training")),]
 
-# Create a new variable called Type assigning observations to training/validation
-new_df$data <- NA
-new_df$data[index] <- "Training"
-new_df$data[-index] <- "Validation"
+valid_df <- new_df[which(new_df$obs_type == c("Validation")),]
 
-table1(~ factor(Paid) + factor(Type) + factor(Category) + Page.total.likes + Post.Month + Post.Hour + Post.Weekday + Lifetime.Post.Consumers|data,data=new_df)
-
-training <- new_df[which(new_df$data == c('Training')),]
-
-pair2 <- ggpairs(training,
-          upper=list(continuous=wrap("cor", alpha=0.5), combo="box_no_facet"),
-          lower=list(continuous=wrap("points", alpha=0.3, size=0.1)), labeller = label_wrap_gen(10, multi_line = TRUE)) 
-pair2 <- pair2 + theme(axis.text.x = element_text(angle = 40, hjust = 1, size = 5), axis.text.y = element_text(vjust = 1, size = 5), text= element_text(size = 10))
-pair2
-
-boxplot(Lifetime.Post.Consumers~Category,data=training)
-
+m <-
+  lm(
+    Lifetime.Post.Consumer.Log ~ factor(Category) +  I(Page.total.likes^2) + factor(Type) +
+      factor(season) + factor(Weekday) + factor(Workhour) + factor(Paid),
+    data = train_df
+  )
+summary(m)
+par(mfrow=matrix(2,2))
+plot(m)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r variable selection}
+library(car)
+reduced_1 <-  lm(
+    Lifetime.Post.Consumer.Log ~  +  I(Page.total.likes^2) + factor(Type) +
+      factor(season) + factor(Weekday) + factor(Workhour) + factor(Paid),
+    data = train_df)
+summary(reduced_1)
+plot(reduced_1)
+anova(reduced_1,m)
+
+reduced_2 <-  lm(
+    Lifetime.Post.Consumer.Log ~  +  I(Page.total.likes^2) + factor(Type) +
+      factor(season) + factor(Weekday) + factor(Workhour),
+    data = train_df)
+summary(reduced_2)
+plot(reduced_2)
+anova(reduced_2,m)
+
+reduced_3 <-  lm(
+    Lifetime.Post.Consumer.Log ~  +  I(Page.total.likes^2) + factor(Type) +
+      factor(season)+ factor(Weekday),
+    data = train_df)
+summary(reduced_3)
+plot(reduced_3)
+anova(reduced_3,m)
+
+reduced_4 <-  lm(
+    Lifetime.Post.Consumer.Log ~  +  I(Page.total.likes^2) + factor(Type) +
+      factor(season),
+    data = train_df)
+summary(reduced_4)
+plot(reduced_4)
+anova(reduced_4,m)
+
+AIC(m,reduced_1,reduced_2,reduced_3,reduced_4)
+BIC(m,reduced_1,reduced_2,reduced_3,reduced_4)
+#step-wise model to validate
+stepwise_model <- step(m, direction = "both")
+
+```
