@@ -1,0 +1,194 @@
+---
+title: "Final Project"
+author: "Yuqing Yang"
+date: "2023-12-09"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Descriptive analysis
+
+```{r Descriptive}
+library(GGally)
+library(car)
+library(ggplot2)
+library(dplyr)
+library(table1)
+library(MLmetrics)
+library(caret)
+
+
+
+df <- read.csv("./facebook_updated.csv")
+summary(df)
+dim(df)
+need <- c("Lifetime.Post.Consumers", "Category", "Page.total.likes", "Type", "Post.Month", "Post.Hour", "Post.Weekday", "Paid","obs_type")
+new_df <- subset(df, select = need)
+summary(new_df)
+new_df <- na.omit(new_df)
+#removed 1  obs with missing paid info
+
+new_df <- new_df %>% mutate(season =
+                                  ifelse(
+                                    Post.Month == 12 | Post.Month == 1 | Post.Month == 2,
+                                    "4Winter",
+                                    ifelse(
+                                      Post.Month == 3 | Post.Month == 4 | Post.Month == 5,
+                                      "1Spring",
+                                      ifelse(
+                                        Post.Month == 6 | Post.Month == 7 | Post.Month == 8,
+                                        "2Summer",
+                                        ifelse(Post.Month == 9 |
+                                                 Post.Month == 10 |
+                                                 Post.Month == 11, "3Fall",
+                                               NA)
+                                      )
+                                    )
+                                  ))
+
+new_df$Category <- as.factor(new_df$Category)
+new_df$Type <- as.factor(new_df$Type)
+new_df$Paid <- as.factor(new_df$Paid)
+new_df$Lifetime.Post.Consumer.Log <- log(new_df$Lifetime.Post.Consumers)
+new_df$Lifetime.Post.Consumers 
+new_df$Post.Hour.0.5 <- new_df$Post.Hour^0.5
+new_df$Page.total.likes.2 <- new_df$Page.total.likes^2
+new_df$Workhour <- as.factor(ifelse(new_df$Post.Hour %in% c(9,10,11,12,13,14,15,16,17), c("Working"),c("Afterwork")))
+new_df$Weekday <- as.factor(ifelse(new_df$Post.Hour %in% c(2,3,4,5,6), c("Weekday"),c("Weekend")))
+
+table1(~ factor(Paid) + factor(Type) + factor(Category) + Page.total.likes + Page.total.likes.2 + factor(season) + +factor(Weekday) + factor(Workhour) + Lifetime.Post.Consumer.Log|obs_type,data=new_df)
+
+
+new_df$Post.Month <- NULL
+new_df$Post.Hour<- NULL
+new_df$Post.Weekday <- NULL
+new_df$Post.Hour.0.5 <- NULL
+
+
+
+pair1 <- ggpairs(new_df,
+          upper=list(continuous=wrap("cor", alpha=0.5), combo="box_no_facet"),
+          lower=list(continuous=wrap("points", alpha=0.3, size=0.1)), labeller = label_wrap_gen(10, multi_line = TRUE)) 
+pair1 <- pair1 + theme(axis.text.x = element_text(angle = 40, hjust = 1, size = 5), axis.text.y = element_text(vjust = 1, size = 5), text= element_text(size = 10))
+pair1
+
+```
+
+```{r reduced_model_4}
+train_df<-new_df[which(new_df$obs_type=="Training"),]
+#delete redundant cols
+train_df<-train_df[,-c(1,3,6)]
+
+test_df<-new_df[which(new_df$obs_type=="Validation"),]
+test_df<-test_df[,-c(1,3,6)]
+
+#"best" one from report4
+reduced_4 <-  lm(
+    Lifetime.Post.Consumer.Log ~  +  Page.total.likes.2 + factor(Type) +
+      factor(season),
+    data = train_df)
+summary(reduced_4)
+```
+
+
+```{r }
+library(glmnet)
+
+xtrain <- model.matrix(Lifetime.Post.Consumer.Log~., train_df)[,-1]
+ytrain <- train_df$Lifetime.Post.Consumer.Log
+
+xtest<-model.matrix(Lifetime.Post.Consumer.Log~., test_df)[,-1]
+ytest<-test_df$Lifetime.Post.Consumer.Log
+
+
+```
+
+```{r lasso}
+lasso_model <- glmnet(x = xtrain,
+                      y = ytrain,
+                      alpha = 1)
+
+#find optimal lambda
+cv.output <- cv.glmnet(xtrain, ytrain, alpha = 1)
+best_lambda_lasso <- cv.output$lambda.min
+lasso_coef <- coef(lasso_model, s = best_lambda_lasso)
+print(lasso_coef)
+
+plot(lasso_model, xvar='lambda', label = TRUE)
+
+```
+```{r Ridge}
+ridge_model <- glmnet(x = xtrain,
+                      y = ytrain,
+                      alpha = 0)
+
+#find optimal lambda
+cv.out <- cv.glmnet(xtrain, ytrain, alpha = 0)
+best_lambda <- cv.out$lambda.min
+ridge_coef <- coef(ridge_model, s = best_lambda)
+# Coefficients at Best Lambda - Ridge
+# Summarize the Ridge model
+print(ridge_coef)
+
+plot(ridge_model, xvar='lambda', label=TRUE)
+```
+
+
+
+```{r predict}
+
+#ridge
+ridge_model_best<-glmnet(x = xtrain,
+                      y = ytrain,
+                      alpha = 0,
+                      lambda=best_lambda)
+predict.ridge<-predict(ridge_model_best, xtest)
+MSE_ridge<-mean((ytest-predict.ridge)^2)
+cat(sep="\n")
+cat("Mean squared error for Ridge Regression:", MSE_ridge)
+
+
+lasso_model_best<-glmnet(x = xtrain,
+                      y = ytrain,
+                      alpha = 1,
+                      lambda=best_lambda_lasso)
+predict.lasso<-predict(lasso_model_best, xtest)
+MSE_lasso<-mean((ytest-predict.lasso)^2)
+cat(sep="\n")
+cat("Mean squared error for Lasso:", MSE_lasso)
+
+#Reduced model 4
+predict.ols<-predict(reduced_4, test_df)
+MSE<-mean((ytest-predict_ols)^2)
+cat(sep="\n")
+cat("Mean squared error for Reduced Model 4:", MSE)
+
+```
+
+```{r adjR^2}
+calculate_adjusted_R2 <- function(actual_values, predicted_values, model, num_obs) {
+    rss <- sum((actual_values - predicted_values) ^ 2)
+    tss <- sum((actual_values - mean(actual_values)) ^ 2)
+    r_squared <- 1 - (rss / tss)
+    num_predictors <- sum(coef(model) != 0) - 1
+    # Calculating Adjusted R^2
+    adjusted_r_squared <- 1 - ((1 - r_squared) * (num_obs - 1) / (num_obs - num_predictors - 1))
+    return(adjusted_r_squared)
+}
+
+poly_adjusted_R2<-calculate_adjusted_R2(ytest,predict.ols, reduced_4, length(ytest))
+names(poly_adjusted_R2)<-c("Testing")
+
+lasso_adjusted_R2<-calculate_adjusted_R2(ytest, predict.lasso,lasso_model_best , length(ytest))
+names(lasso_adjusted_R2)<-c("Testing")
+
+
+ridge_adjusted_R2<-calculate_adjusted_R2(ytest, predict.ridge,ridge_model_best , length(ytest))
+names(ridge_adjusted_R2)<-c("Testing")
+
+rbind(poly_adjusted_R2,lasso_adjusted_R2, ridge_adjusted_R2)
+
+```
