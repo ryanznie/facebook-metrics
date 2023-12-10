@@ -1,0 +1,124 @@
+---
+title: "Model Selection"
+author: "Yuqing Yang"
+date: "11/12/2023"
+output:
+  pdf_document: default
+---
+```{r setup, include=FALSE, echo=FALSE}
+library(car)
+library(glmnet)
+library(caret)
+library(tidyverse)
+library(GGally)
+model_df <- read.csv('./facebook_updated.csv')
+```
+
+# Please refer to facebook-metrics.Rmd in Ryan branch for Matrix of correlation and EDA
+
+# This Rmd is used for model selection
+
+```{r transform}
+train_df <- model_df %>% filter(obs_type == 'Training') %>% select(c(Lifetime.Post.Consumers, Category, Page.total.likes, Type, Post.Month, Post.Hour, Post.Weekday, Paid))
+# transform on numerical variables only
+transform <- train_df %>% select(c(Lifetime.Post.Consumers, Page.total.likes)) 
+
+boxcox_result <- preProcess(transform, method = "BoxCox")
+boxcox_result
+
+# only log transform on `Lifetime.Post.Consumers`
+# `Page.total.likes**2` does not normalize distribution according to histogram... 
+# ... Keep Page.total.likes as original form currently
+t_train_df<-train_df %>% mutate(tLifetime.Post.Consumers=log(Lifetime.Post.Consumers))
+
+```
+
+
+```{r model_fitting}
+#fit the full model with all predictors
+full_model<-lm(
+    tLifetime.Post.Consumers ~ Category + Page.total.likes + Type +
+      Post.Month + Post.Hour + Post.Weekday + Paid, data = t_train_df)
+#examine full model regression
+summary(full_model)
+```
+
+```{r}
+# added variable plots
+avPlots(full_model)
+# variance inflation factors
+vif(full_model)
+```
+```{r stepwise regression}
+
+stepwise_model <- step(full_model, direction = "both")
+
+#result shows that the lowest AIC model is...
+#...tLifetime.Post.Consumers ~ Page.total.likes + Type + Post.Month + ...
+#...Paid
+
+```
+```{r reduced model}
+
+reduced_model<-lm(tLifetime.Post.Consumers~Page.total.likes + Type + Post.Month+Paid, data=t_train_df)
+summary(reduced_model)
+# added variable plots
+avPlots(reduced_model)
+# variance inflation factors
+vif(reduced_model)
+
+```
+
+```{r partial F test}
+anova(full_model, reduced_model)
+#Insignificant p-value of F-test indicates excluding these predictors may not affect the model fit...
+#... The reduced model may be better fit than full model given lower AIC and insignificant Partial... #... F-test
+```
+```{r step regression with transformation}
+#fit the full model with all predictors with transformation on Page.total.likes
+full_model_2<-lm(
+    tLifetime.Post.Consumers ~ Category +Page.total.likes+ I(Page.total.likes^2) + Type +
+      Post.Month + Post.Hour + Post.Weekday + Paid, data = t_train_df)
+stepwise_model_2 <- step(full_model_2, direction = "both")
+
+reduced_model_2<-lm(tLifetime.Post.Consumers ~ I(Page.total.likes^2) + Type + Post.Month + 
+    Paid, data=t_train_df)
+
+#Perform 4 steps by removing some variables
+#The final model includes "I(Page.total.likes^2)", "Type","Post.Month","Paid"
+#The final LOWEST AIC is -201.93, which is smaller than the first stepwide_model
+#Therefore, the reduced_model_2 may be a better fit than reduced_model
+
+```
+
+```{r }
+#examine reduced_model_2
+summary(reduced_model_2)
+vif(reduced_model_2)
+avPlots(reduced_model_2)
+```
+
+```{r partial F test 2}
+
+anova(full_model, reduced_model_2)
+
+#Insignificant p-value of F-test indicates excluding these predictors may not affect the model fit...
+#... The reduced model 2 may be better fit than full model given lower AIC and insignificant Partial... #... F-test
+
+```
+
+```{r BIC}
+
+sprintf(paste("BIC of full model", BIC(full_model)))
+sprintf(paste("BIC of 1st reduced model", BIC(reduced_model)))
+sprintf(paste("BIC of 2ed reduced model", BIC(reduced_model_2)))
+
+```
+
+
+```{r diagnostic}
+par(mfrow=c(2,2)) 
+plot(reduced_model_2)
+```
+# Conclusion:
+## lm(tLifetime.Post.Consumers ~ I(Page.total.likes^2) +Type + Post.Month + Paid, data = t_train_df)
